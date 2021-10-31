@@ -1,0 +1,99 @@
+---
+title: "ExprecionGenica"
+author: "DanteTorres"
+date: "11/14/2020"
+output: html_document
+---
+
+## Ejercicio 1 y 2:
+```{r}
+# En este bloque se crean vectores de trabajo y se asignan los valores de expresion. Cada pareja de genes tiene una M correspondiente la cual es utilizada para sacar
+# los niveles de expresion de forma aleatoria.Tambien se prepara el espacio para imprimir
+genes <- paste("Gene", 1:50000, sep = "")
+categoria_genes <- sample(x = c("Activador", "Represor", "Ambivalente"), size = length(genes), replace = TRUE, prob = c(0.5, 0.4, 0.1))
+M <- rgamma(n = length(genes), shape = 5, scale = 2)
+val_expresion <- rnorm(n = length(M)*30, mean = M, sd = M/2)
+colores <- colors()
+def.par <- par(no.readonly = TRUE)
+
+```
+
+
+## Ejercicio 3 y 4:
+```{r}
+# En este bloque se eligen genes de manera aleatoria, y se grafican sus valores de expresion y su heatmap correspondiente. La funcion graficar_exp saca los valores de # expresion multiplicando el indice del gen aleatorio por 30 y por 30-29. Esto nos permite evitar crear mas variables.
+random<- function(muestra, num_randoms){
+  return(sample(1:length(muestra), num_randoms))
+} 
+
+graficar_exp <- function(index1, index2){
+  plot(1:30, val_expresion[index1:index2], type = "l", xlim = NULL, ylim = c(-10,60), xlab = "Tiempo", ylab = "Expresion", col= random(colores, 30))
+  par(new=T)
+  return(val_expresion[index1:index2])
+}
+
+genes_random <- random(genes, 30)
+val_exp_genes <- mapply(FUN = graficar_exp, index1=(genes_random*30)-29, index2=genes_random*30)
+par(def.par)
+heatmap(x = val_exp_genes, Rowv = 1:30, Colv = val_exp_genes, symm = TRUE, labRow = paste("Gene",genes_random, sep = " "))
+```
+
+## Ejercicio 5:
+```{r}
+# En este bloque se grafica el barplot. La funcion valores funciona casi igual a la descrita arriba con la diferencia de que no grafica ddirectamente. No es necesario 
+# que grafique directamente ya que solo es una grafica, en la anterior eran 30 sobrepuestas. La funcion promedios_fun saca los promedios de cada condicion garcias a
+# que se acomodan de tal forma en la que solo se tiene que sacar el promedio de cada columna.
+valores <- function(index1, index2){
+  return(val_expresion[index1:index2])
+
+}
+
+promedios_fun <- function(data, genes_sec){
+  x <- `dim<-`(data, c(15,length(genes_sec)*2))
+  return(apply(x, 2, mean))
+}
+
+genes_random <- random(genes, 10)
+matriz_datos <- mapply(FUN = valores, index1=(genes_random*30)-29, index2=(genes_random*30))
+promedios <- promedios_fun(matriz_datos, genes_random)
+nombres <- rep(paste("Gen", genes_random, sep = ""), each = 2)
+barplot(promedios, space = c(1,0), names.arg = nombres[1:20], las = 3, col = cm.colors(2), legend.text = c("Condicion1", "Condicion2"))
+```
+
+# Ejercicio 6, 7, 9:
+```{r}
+# En este bloque se sacan los t-stat para cada condicion, como los valores de cada expresion estan uno al lado de otro, se usa la funcion seq para separarlos.
+promedio_total <- promedios_fun(val_expresion, genes)
+condicion1 <- promedio_total[seq(from = 1, to = length(promedio_total), by = 2)]
+condicion2 <- setdiff(promedio_total, condicion1)
+tstat <- ((condicion1 - condicion2) / sqrt((var(condicion1)/14) + (var(condicion2)/14)))
+nombres_genes_expdif <- genes[which(tstat %in% tstat[abs(tstat) > 3])]
+write(nombres_genes_expdif, file = "nombres_genes_exp_diferencial.txt")
+```
+
+```{r}
+# Se asignan los t-stat para cada categoria de genes. Se sacan todos los indices de los t-stats y luego se emparejan con los indices de sus categorias correspondientes.
+hist(x = tstat, col = terrain.colors(10), main = "T-Stat Total" ,xlab = "Valor T-Stat")
+layout(matrix(c(3,1,4,2), 2, 2))
+hist(x = tstat, col = terrain.colors(10), main = "T-Stat Total" ,xlab = "Valor T-Stat")
+hist(x = tstat[which(categoria_genes %in% "Activador")], col = heat.colors(10), main  = "T-Stat Activador", xlab = "Valor T-Stat")
+hist(x = tstat[which(categoria_genes %in% "Represor")], col = rainbow(10),  main  = "T-Stat Represor", xlab = "Valor T-Stat")
+hist(x = tstat[which(categoria_genes %in% "Ambivalente")], col = colorRampPalette(c("blue", "red"))( 4 ),  main  = "T-Stat Ambivalente", xlab = "Valor T-Stat")
+```
+
+## Ejercicio 8 y 10:
+```{r}
+# Se imprimen las graficas con el mismo metodo descrito arriba. La funcion graficar_pie suma los t-stats con expresion diferencial para cada categoria y hace la grafica correspondiente.
+indices_categorias <- categoria_genes[which(tstat %in% tstat[abs(tstat) > 3])]
+grafica_pie <- function(categoria){
+  pieX <- sum(indices_categorias == categoria)
+  return(pieX)
+}
+
+par(def.par)
+num_expdiff <- mapply(grafica_pie, c("Activador", "Represor", "Ambivalente"))
+pie(num_expdiff, labels = c("Activador", "Represor", "Ambivalente"), main = "Numero de valores diferenciales por categoria")
+
+boxplot(tstat[which(categoria_genes %in% "Activador")], tstat[which(categoria_genes %in% "Represor")], tstat[which(categoria_genes %in% "Ambivalente")], names  = c("Activador", "Represor", "Ambivalente"), col = rainbow(12), main = "Categorias")
+```
+
