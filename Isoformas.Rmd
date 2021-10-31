@@ -1,0 +1,37 @@
+---
+title: "Isoformas"
+author: "DanteTorres"
+date: "10/24/2020"
+output: html_document
+---
+
+```{r}
+# Creamos el vector que contiene el numero de isoformas para cada gen.
+genes <- rbinom(n = 50000, size = 5, prob = 0.5)
+genes[genes == 0] <- 1
+
+# Generamos la tasa de decaimiento para cada gen a partir del valor tau.
+tau <- rnorm(n = 50000, mean = 10, sd = 1)
+decaimiento <- rexp(n = sum(genes), rate = abs(tau))
+
+# Asignamos categorías de tipos de tejido a cada isoforna
+cat_isoformas <- sample(x = c("Tejido A", "Tejido B"), size = length(decaimiento), replace = TRUE, prob = c(0.6, 0.4))
+
+# Juntamos todos los datos de para cada isoforma.
+indices <- rep(1:length(genes), times = genes)
+isoforma_mas_estable <- tapply(decaimiento, indices, min)
+tipo_tejido <- tapply(cat_isoformas,indices, min, default = 0, simplify = TRUE)
+
+# Acomodamos los datos dentro de un Data Frame y le ponemos nombres pa que se vea boito
+datos_generales <- data.frame("Decaimiento isoforma mas Estable" = isoforma_mas_estable)
+datos_generales <- cbind(datos_generales, "Tipo de Tejido" = tipo_tejido)
+row.names(datos_generales) <- paste("Gen", 1:50000, sep = " ")
+
+# Imprimimos los resultados en pantalla. Isoformas mas estables, gen del que provienen, tipo de tejido
+promedio_decaimiento <- mean(datos_generales[,1])
+print(format.data.frame(datos_generales, justify = "right"))
+print("Promedio de decaimiento de isoformas:")
+print(promedio_decaimiento)
+
+```
+
